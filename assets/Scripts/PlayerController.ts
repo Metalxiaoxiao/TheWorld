@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Input, input, KeyCode, Vec3 } from 'cc';
+import { _decorator, Component, Node, Input, input, KeyCode, Vec3, BoxCollider } from 'cc';
 const { ccclass, property } = _decorator;
 import { EventTarget } from 'cc';
 const eventTarget = new EventTarget();
@@ -11,14 +11,22 @@ export class PlayerController extends Component {
     jumpForce: number = 15; // 添加跳跃力属性
 
     private moveDirection: Vec3 = new Vec3(0, 0, 0);
-    private isJumping: boolean = false; // 跳跃状态
     private velocityY: number = 0; // Y轴速度
-    private gravity: number = -50; // 重力
     private Chest: Node = null;//箱子节点
+    private jumpedTime: number = 0; // 跳跃持续时间
+    private maxJumpTime: number = 0.5; // 最大跳跃持续时间
+    private isOnGround: boolean = false; // 是否在地面上
 
     start() {
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
+        let collider = this.node.getComponent(BoxCollider);
+        collider.on('onCollisionEnter', (event) => {
+            // 当玩家与地面碰撞时，重置跳跃状态
+            if (event.otherCollider.node.name === 'Block') {
+                this.isOnGround = true;
+            }
+        })
     }
 
  
@@ -51,9 +59,10 @@ export class PlayerController extends Component {
                 this.moveDirection.z = 1;
                 break;
             case KeyCode.SPACE:
-                if (!this.isJumping) {
+                if (this.jumpedTime >= this.maxJumpTime && this.isOnGround) {
                     this.velocityY = this.jumpForce;
-                    this.isJumping = true;
+                    this.jumpedTime = 0;
+                    this.isOnGround = false;
                 }
                 break;
         }
@@ -73,9 +82,6 @@ export class PlayerController extends Component {
     }
 
     update(deltaTime: number) {
-        // 应用重力
-        this.velocityY += this.gravity * deltaTime;
-        
         const pos = this.node.position;
         const moveDelta = new Vec3(
             this.moveDirection.x * this.moveSpeed * deltaTime,
@@ -84,13 +90,7 @@ export class PlayerController extends Component {
         );
         
         this.node.setPosition(pos.add(moveDelta));
-        
-        // 检测是否落地
-        if (pos.y <= 0) {
-            this.node.setPosition(pos.x, 0, pos.z);
-            this.velocityY = 0;
-            this.isJumping = false;
-        }
+        this.jumpedTime += deltaTime; // 更新跳跃持续时间
     }
 }
 
