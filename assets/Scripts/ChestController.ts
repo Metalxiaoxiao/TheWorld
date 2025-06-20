@@ -1,5 +1,7 @@
-import { _decorator, Component, Node, Camera, geometry, input, Input, EventTouch, PhysicsSystem } from 'cc';
+import { Animation, _decorator, Component, Node, Camera, geometry, input, Input, EventTouch, PhysicsSystem } from 'cc';
 const { ccclass, property } = _decorator;
+import { EventTarget } from 'cc';
+const eventTarget = new EventTarget();
 
 @ccclass('ChestController')
 export class ChestController extends Component {
@@ -9,35 +11,27 @@ export class ChestController extends Component {
  
      @property(Node)
      public targetNode!: Node
+
+     @property({type: Animation})
+    public BodyAnim: Animation | null = null;
  
      private _ray: geometry.Ray = new geometry.Ray();
  
      onEnable () {
-         input.on(Input.EventType.TOUCH_START, this.onTouchStart, this);
+        eventTarget.on('openChest', this.openChest, this);
      }
  
      onDisable () {
-         input.off(Input.EventType.TOUCH_START, this.onTouchStart, this);
+        eventTarget.off('openChest', this.openChest, this);
      }
  
-     onTouchStart(event: EventTouch) {
-        console.log('touch start!');
-         const touch = event.touch!;
-         this.cameraCom.screenPointToRay(touch.getLocationX(), touch.getLocationY(), this._ray);
-         if (PhysicsSystem.instance.raycast(this._ray)) {
-             const raycastResults = PhysicsSystem.instance.raycastResults;
-             for (let i = 0; i < raycastResults.length; i++) {
-                 const item = raycastResults[i];
-                 if (item.collider.node == this.targetNode) {
-                     console.log('raycast hit the target node !');
-                     break;
-                 }
-             }
-         } else {
-             console.log('raycast does not hit the target node !');
+     openChest () {
+         //播放开箱动画
+         if (this.BodyAnim) {
+             this.BodyAnim.play('OpenChest');
          }
      }
-     
+
     start() {
         
     }
