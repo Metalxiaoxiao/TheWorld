@@ -17,6 +17,9 @@ export class PlayerController extends Component {
     private maxJumpTime: number = 0.5; // 最大跳跃持续时间
     private isOnGround: boolean = false; // 是否在地面上
 
+    @property(Label)
+    interactionPrompt: Label | null= null;
+
     start() {
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
@@ -25,18 +28,24 @@ export class PlayerController extends Component {
             // 当玩家与地面碰撞时，重置跳跃状态
             if (event.otherCollider.node.name === 'Block') {
                 this.isOnGround = true;
-            }
+            }else if (event.otherCollider.node.name === 'Chest') {
+                this.Chest = event.otherCollider.node;
+                this.ShowInteractionPrompt();
         })
-    }
-
+         collider.on('onCollisionExit', (event) => {
+            if (event.otherCollider.node.name === 'Chest') {
+                this.Chest = null;
+                this.hideInteractionPrompt(); 
+            }
+        });
+    }              
  
+            
     //计算两个vector距离的函数\
     distance(v1: Vec3, v2: Vec3): number {
         return Math.sqrt((v1.x - v2.x) ** 2 + (v1.y - v2.y) ** 2 + (v1.z - v2.z) ** 2);
     }
 
-
-    
 
     onKeyDown(event: any) {
         switch(event.keyCode) {
