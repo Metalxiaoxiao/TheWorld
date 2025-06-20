@@ -13,7 +13,7 @@ export class ChestController extends Component {
      public targetNode!: Node
 
      @property({type: Animation})
-    public BodyAnim: Animation | null = null;
+    public OpenAnim: Animation | null = null;
  
      private _ray: geometry.Ray = new geometry.Ray();
  
@@ -27,8 +27,8 @@ export class ChestController extends Component {
  
      openChest () {
          //播放开箱动画
-         if (this.BodyAnim) {
-             this.BodyAnim.play('OpenChest');
+         if (this.OpenAnim) {
+             this.OpenAnim.play('OpenChest');
          }
      }
 

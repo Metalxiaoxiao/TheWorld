@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Input, input, KeyCode, Vec3, BoxCollider } from 'cc';
+import { _decorator, Component, Node, Input, input, KeyCode, Vec3, BoxCollider , log, RigidBody, SphereCollider} from 'cc';
 const { ccclass, property } = _decorator;
 import { EventTarget } from 'cc';
 const eventTarget = new EventTarget();
@@ -11,28 +11,41 @@ export class PlayerController extends Component {
     jumpForce: number = 15; // 添加跳跃力属性
 
     private moveDirection: Vec3 = new Vec3(0, 0, 0);
-    private velocityY: number = 0; // Y轴速度
-    private Chest: Node = null;//箱子节点
-    private jumpedTime: number = 0; // 跳跃持续时间
-    private maxJumpTime: number = 0.5; // 最大跳跃持续时间
-    private isOnGround: boolean = false; // 是否在地面上
+    private isOnGround: boolean = true; // 是否在地面上
+    private onKeyWDown: boolean = false;
+    private onKeySDown: boolean = false;
+    private onKeyADown: boolean = false;
+    private onKeyDDown: boolean = false;
+    private onKeyEDown: boolean = false;
+    private onKeySpaceDown: boolean = false;
 
     start() {
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
-        let collider = this.node.getComponent(BoxCollider);
-        collider.on('onCollisionEnter', (event) => {
+        let _BoxCollider = this.node.getComponent(BoxCollider);
+        _BoxCollider.on('onCollisionEnter', (event) => {
             // 当玩家与地面碰撞时，重置跳跃状态
+            console.log('onCollisionEnter', event.otherCollider.node.name);
             if (event.otherCollider.node.name === 'Block') {
                 this.isOnGround = true;
             }
         })
-    }
+        let _RangeCollider = this.node.getComponent(SphereCollider);
+        _RangeCollider.on('onCollisionStay', (event) => {
+            //获取碰撞对象
+            let otherCollider = event.otherCollider;
+            //获取碰撞对象的节点
+            let otherNode = otherCollider.node;
+            //获取碰撞对象的节点的名称
+            let otherNodeName = otherNode.name;
+            
+            if (otherNodeName === 'Chest' && this.onKeyEDown) {
+                // 当玩家与箱子碰撞时，触发事件
+                eventTarget.emit('openChest');
+            }
+        })
 
- 
-    //计算两个vector距离的函数\
-    distance(v1: Vec3, v2: Vec3): number {
-        return Math.sqrt((v1.x - v2.x) ** 2 + (v1.y - v2.y) ** 2 + (v1.z - v2.z) ** 2);
+        log('PlayerController start');
     }
 
 
@@ -41,27 +54,27 @@ export class PlayerController extends Component {
     onKeyDown(event: any) {
         switch(event.keyCode) {
             case KeyCode.KEY_E:
-                //检测箱子是否在范围内
-                if (this.Chest && this.distance(this.node.position, this.Chest.position) < 1) {
-                    eventTarget.emit('openChest');
-                }   
+                this.onKeyEDown = true;
+                
+
                 break;
             case KeyCode.KEY_W:
-                this.moveDirection.x = 1;
+                this.onKeyWDown = true;
                 break;
             case KeyCode.KEY_S:
-                this.moveDirection.x = -1;
+                this.onKeySDown = true;
                 break;
             case KeyCode.KEY_A:
-                this.moveDirection.z = -1;
+                this.onKeyADown = true;
                 break;
             case KeyCode.KEY_D:
-                this.moveDirection.z = 1;
+                this.onKeyDDown = true;
                 break;
             case KeyCode.SPACE:
-                if (this.jumpedTime >= this.maxJumpTime && this.isOnGround) {
-                    this.velocityY = this.jumpForce;
-                    this.jumpedTime = 0;
+                this.onKeySpaceDown = true;
+                if (this.isOnGround) {
+                    //设置刚体速度
+                    this.node.getComponent(RigidBody).setLinearVelocity(new Vec3(0, this.jumpForce, 0));
                     this.isOnGround = false;
                 }
                 break;
@@ -70,28 +83,64 @@ export class PlayerController extends Component {
 
     onKeyUp(event: any) {
         switch(event.keyCode) {
+            case KeyCode.KEY_E:
+                this.onKeyEDown = false;
+                break;
             case KeyCode.KEY_W:
+                this.onKeyWDown = false;
+                break;
             case KeyCode.KEY_S:
-                this.moveDirection.x = 0;
+                this.onKeySDown = false;
                 break;
             case KeyCode.KEY_A:
-            case KeyCode.KEY_D:
-                this.moveDirection.z = 0;
+                this.onKeyADown = false;
                 break;
+            case KeyCode.KEY_D:
+                this.onKeyDDown = false;
+                break;
+            case KeyCode.SPACE:
+                this.onKeySpaceDown = false;
+                break;
+
         }
     }
 
     update(deltaTime: number) {
-        const pos = this.node.position;
-        const moveDelta = new Vec3(
-            this.moveDirection.x * this.moveSpeed * deltaTime,
-            this.velocityY * deltaTime, // 使用velocityY控制Y轴移动
-            this.moveDirection.z * this.moveSpeed * deltaTime,
-        );
-        
-        this.node.setPosition(pos.add(moveDelta));
-        this.jumpedTime += deltaTime; // 更新跳跃持续时间
+        let deltaVelocity = new Vec3(0, 0, 0);
+        if (this.onKeyWDown) {
+            deltaVelocity.z = this.moveSpeed;
+        }
+        if (this.onKeySDown) {
+            deltaVelocity.z = -this.moveSpeed;
+        }
+        if (this.onKeyADown) {
+            deltaVelocity.x = -this.moveSpeed;
+        }
+        if (this.onKeyDDown) {
+            deltaVelocity.x = this.moveSpeed;
+        }
+        if (deltaVelocity.length() > 0) {
+            deltaVelocity.normalize();
+            deltaVelocity.multiplyScalar(this.moveSpeed);
+            //获取当前速度
+            let velocityOutput = new Vec3();
+            this.node.getComponent(RigidBody).getLinearVelocity(velocityOutput);
+            let currentVelocity = velocityOutput;
+            // 计算新速度
+            let newVelocity = currentVelocity.add(deltaVelocity);
+            
+
+
+
+        }
+        if (this.isOnGround) {
+            //取消重力影响
+            this.node.getComponent(RigidBody).useGravity = false;
+        }else {
+            this.node.getComponent(RigidBody).useGravity = true;
+        }
     }
+
 }
 
 

@@ -6,7 +6,7 @@ export class PhysicsController extends Component {
     start() {
         PhysicsSystem.instance.enable = true;
         PhysicsSystem.instance.gravity = new Vec3(0, -50, 0);
-        PhysicsSystem.instance.allowSleep = false;
+        PhysicsSystem.instance.allowSleep = true;
     }
 
     update(deltaTime: number) {
